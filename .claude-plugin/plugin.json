@@ -3,5 +3,8 @@
   "description": "TAP-14 writer libraries (Go + Rust) and skill for producing spec-compliant TAP output",
   "author": {
     "name": "friedenberg"
-  }
+  },
+  "skills": [
+    "./skills/tap14"
+  ]
 }
