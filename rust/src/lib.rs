@@ -29,31 +29,67 @@ impl TapWriter {
 }
 
 pub fn write_version(w: &mut impl Write) -> io::Result<()> {
-    todo!()
+    writeln!(w, "TAP version 14")
 }
 
 pub fn write_plan(w: &mut impl Write, count: usize) -> io::Result<()> {
-    todo!()
+    writeln!(w, "1..{count}")
+}
+
+fn write_yaml_field(w: &mut impl Write, key: &str, value: &str) -> io::Result<()> {
+    if value.contains('\n') {
+        writeln!(w, "  {key}: |")?;
+        for line in value.lines() {
+            writeln!(w, "    {line}")?;
+        }
+    } else {
+        writeln!(w, "  {key}: \"{value}\"")?;
+    }
+    Ok(())
+}
+
+fn has_yaml_block(result: &TestResult) -> bool {
+    !result.ok || result.output.is_some()
 }
 
 pub fn write_test_point(w: &mut impl Write, result: &TestResult) -> io::Result<()> {
-    todo!()
+    let status = if result.ok { "ok" } else { "not ok" };
+    writeln!(w, "{status} {} - {}", result.number, result.name)?;
+
+    if has_yaml_block(result) {
+        writeln!(w, "  ---")?;
+        if let Some(ref message) = result.error_message {
+            write_yaml_field(w, "message", message)?;
+        }
+        if !result.ok {
+            writeln!(w, "  severity: fail")?;
+        }
+        if let Some(code) = result.exit_code {
+            writeln!(w, "  exitcode: {code}")?;
+        }
+        if let Some(ref output) = result.output {
+            write_yaml_field(w, "output", output)?;
+        }
+        writeln!(w, "  ...")?;
+    }
+
+    Ok(())
 }
 
 pub fn write_bail_out(w: &mut impl Write, reason: &str) -> io::Result<()> {
-    todo!()
+    writeln!(w, "Bail out! {reason}")
 }
 
 pub fn write_comment(w: &mut impl Write, text: &str) -> io::Result<()> {
-    todo!()
+    writeln!(w, "# {text}")
 }
 
 pub fn write_skip(w: &mut impl Write, num: usize, desc: &str, reason: &str) -> io::Result<()> {
-    todo!()
+    writeln!(w, "ok {num} - {desc} # SKIP {reason}")
 }
 
 pub fn write_todo(w: &mut impl Write, num: usize, desc: &str, reason: &str) -> io::Result<()> {
-    todo!()
+    writeln!(w, "not ok {num} - {desc} # TODO {reason}")
 }
 
 #[cfg(test)]
