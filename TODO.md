@@ -1,0 +1,1 @@
+- [ ] add go, rust, zig, and java libraries (examine a bash lib too)
