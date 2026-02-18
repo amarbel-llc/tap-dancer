@@ -106,3 +106,41 @@ func TestParsePragma(t *testing.T) {
 		}
 	}
 }
+
+func TestParseTestPointEscaping(t *testing.T) {
+	tests := []struct {
+		line string
+		desc string
+	}{
+		{`ok 1 - has \# hash`, "has # hash"},
+		{`ok 1 - has \\ backslash`, `has \ backslash`},
+		{`ok 1 - has \\\# both`, `has \# both`},
+		{`ok 1 - normal desc`, "normal desc"},
+	}
+	for _, tt := range tests {
+		tp, _ := parseTestPoint(tt.line)
+		if tp.Description != tt.desc {
+			t.Errorf("parseTestPoint(%q).Description = %q, want %q", tt.line, tp.Description, tt.desc)
+		}
+	}
+}
+
+func TestDirectiveCase(t *testing.T) {
+	tests := []struct {
+		line      string
+		directive Directive
+	}{
+		{"ok 1 - x # SKIP reason", DirectiveSkip},
+		{"ok 1 - x # skip reason", DirectiveSkip},
+		{"ok 1 - x # Skip reason", DirectiveSkip},
+		{"ok 1 - x # TODO reason", DirectiveTodo},
+		{"ok 1 - x # todo reason", DirectiveTodo},
+		{"ok 1 - x # Todo reason", DirectiveTodo},
+	}
+	for _, tt := range tests {
+		tp, _ := parseTestPoint(tt.line)
+		if tp.Directive != tt.directive {
+			t.Errorf("parseTestPoint(%q).Directive = %v, want %v", tt.line, tp.Directive, tt.directive)
+		}
+	}
+}

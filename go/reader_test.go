@@ -208,3 +208,75 @@ func TestReaderWriteToWithErrors(t *testing.T) {
 		t.Errorf("expected version-required in output, got: %q", out)
 	}
 }
+
+func TestReaderSubtest(t *testing.T) {
+	input := "TAP version 14\n1..1\n    # Subtest: nested\n    ok 1 - inner pass\n    1..1\nok 1 - nested\n"
+	_, diags, summary := collectEvents(input)
+
+	for _, d := range diags {
+		if d.Severity == SeverityError {
+			t.Errorf("unexpected error: %s: %s", d.Rule, d.Message)
+		}
+	}
+	if !summary.Valid {
+		t.Error("expected Valid=true for valid subtest")
+	}
+}
+
+func TestReaderNestedSubtest(t *testing.T) {
+	input := "TAP version 14\n1..1\n    # Subtest: outer\n        # Subtest: inner\n        ok 1 - deep\n        1..1\n    ok 1 - inner result\n    1..1\nok 1 - outer result\n"
+	_, diags, summary := collectEvents(input)
+
+	for _, d := range diags {
+		if d.Severity == SeverityError {
+			t.Errorf("unexpected error: %s: %s", d.Rule, d.Message)
+		}
+	}
+	if !summary.Valid {
+		t.Error("expected Valid=true for nested subtests")
+	}
+}
+
+func TestReaderSubtestPlanMismatch(t *testing.T) {
+	input := "TAP version 14\n1..1\n    ok 1 - inner\n    1..3\nok 1 - outer\n"
+	_, diags, _ := collectEvents(input)
+
+	found := false
+	for _, d := range diags {
+		if d.Rule == "plan-count-mismatch" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("expected plan-count-mismatch for subtest")
+	}
+}
+
+func TestReaderSkipAllPlan(t *testing.T) {
+	input := "TAP version 14\n1..0 # skip all tests\n"
+	_, diags, summary := collectEvents(input)
+
+	for _, d := range diags {
+		if d.Severity == SeverityError {
+			t.Errorf("unexpected error: %s: %s", d.Rule, d.Message)
+		}
+	}
+	if !summary.Valid {
+		t.Error("expected Valid=true for skip-all plan")
+	}
+}
+
+func TestReaderUnclosedYAML(t *testing.T) {
+	input := "TAP version 14\n1..1\nnot ok 1 - fail\n  ---\n  message: broken\n"
+	_, diags, _ := collectEvents(input)
+
+	found := false
+	for _, d := range diags {
+		if d.Rule == "yaml-unclosed" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("expected yaml-unclosed diagnostic")
+	}
+}
