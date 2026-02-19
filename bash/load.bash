@@ -9,13 +9,15 @@ source "$(dirname "${BASH_SOURCE[0]}")/src/bail_out.bash"
 
 _tap_test_num=0
 _tap_plan_declared=0
+_tap_bailed=0
 
 _tap_trailing_plan() {
-  if [[ $_tap_plan_declared -eq 0 ]]; then
+  if [[ $_tap_bailed -eq 0 && $_tap_plan_declared -eq 0 ]]; then
     echo "1..${_tap_test_num}"
   fi
 }
 
-trap _tap_trailing_plan EXIT
+_tap_existing_exit_trap="$(trap -p EXIT | sed "s/^trap -- '//;s/' EXIT$//")"
+trap "${_tap_existing_exit_trap:+${_tap_existing_exit_trap}; }_tap_trailing_plan" EXIT
 
 echo "TAP version 14"
