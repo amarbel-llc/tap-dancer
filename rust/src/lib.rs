@@ -195,10 +195,7 @@ mod tests {
     fn bail_out() {
         let mut buf = Vec::new();
         write_bail_out(&mut buf, "database down").unwrap();
-        assert_eq!(
-            String::from_utf8(buf).unwrap(),
-            "Bail out! database down\n"
-        );
+        assert_eq!(String::from_utf8(buf).unwrap(), "Bail out! database down\n");
     }
 
     #[test]
