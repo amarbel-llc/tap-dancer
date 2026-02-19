@@ -154,6 +154,25 @@ func TestReaderBailOut(t *testing.T) {
 	}
 }
 
+func TestReaderBailOutSuppressesPlanMismatch(t *testing.T) {
+	input := "TAP version 14\n1..3\nok 1 - a\nBail out! database down\n"
+	r := NewReader(strings.NewReader(input))
+	diags := r.Diagnostics()
+	summary := r.Summary()
+
+	if !summary.BailedOut {
+		t.Error("expected BailedOut=true")
+	}
+	for _, d := range diags {
+		if d.Rule == "plan-count-mismatch" {
+			t.Errorf("bail out should suppress plan-count-mismatch, got: %s", d.Message)
+		}
+	}
+	if !summary.Valid {
+		t.Error("expected Valid=true when bailed out (plan mismatch suppressed)")
+	}
+}
+
 func TestReaderSkipAndTodo(t *testing.T) {
 	input := "TAP version 14\n1..3\nok 1 - a\nok 2 - b # SKIP lazy\nnot ok 3 - c # TODO later\n"
 	_, _, summary := collectEvents(input)
