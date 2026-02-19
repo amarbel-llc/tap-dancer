@@ -30,7 +30,10 @@
     utils.lib.eachDefaultSystem (
       system:
       let
-        overlays = [ (import rust-overlay) ];
+        overlays = [
+          (import rust-overlay)
+          go.overlays.default
+        ];
         pkgs = import nixpkgs {
           inherit system;
           overlays = overlays;
@@ -42,21 +45,33 @@
         rustToolchain = pkgs.rust-bin.stable.latest.default;
         craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchain;
 
-        # Go library - compile check (library, no binary output)
-        tap-dancer-go = pkgs.stdenvNoCC.mkDerivation {
+        version = "0.1.0";
+
+        # Go library - compile check
+        tap-dancer-go = pkgs.buildGoApplication {
           pname = "tap-dancer-go";
-          version = "0.1.0";
+          inherit version;
           src = ./go;
-          nativeBuildInputs = [ pkgs.go ];
-          buildPhase = ''
-            export HOME=$TMPDIR
-            export GOPATH=$TMPDIR/go
-            go build ./...
+          modules = ./go/gomod2nix.toml;
+        };
+
+        # Go CLI binary
+        tap-dancer-cli = pkgs.buildGoApplication {
+          pname = "tap-dancer";
+          inherit version;
+          src = ./go;
+          modules = ./go/gomod2nix.toml;
+          subPackages = [ "cmd/tap-dancer" ];
+
+          postInstall = ''
+            $out/bin/tap-dancer generate-plugin $out
           '';
-          installPhase = ''
-            mkdir -p $out/src/tap-dancer-go
-            cp -r . $out/src/tap-dancer-go/
-          '';
+
+          meta = with pkgs.lib; {
+            description = "TAP-14 validator and writer toolkit";
+            homepage = "https://github.com/amarbel-llc/tap-dancer";
+            license = licenses.mit;
+          };
         };
 
         # Rust library
@@ -83,11 +98,12 @@
           default = pkgs.symlinkJoin {
             name = "tap-dancer";
             paths = [
-              tap-dancer-go
+              tap-dancer-cli
               tap-dancer-rust
               tap-dancer-skill
             ];
           };
+          cli = tap-dancer-cli;
           go = tap-dancer-go;
           rust = tap-dancer-rust;
           skill = tap-dancer-skill;
