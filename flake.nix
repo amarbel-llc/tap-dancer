@@ -92,6 +92,21 @@
           cp -r ${./skills}/* $out/share/purse-first/tap-dancer/skills/
           cp ${./.claude-plugin/plugin.json} $out/share/purse-first/tap-dancer/plugin.json
         '';
+
+        # Bash library
+        tap-dancer-bash = pkgs.stdenvNoCC.mkDerivation {
+          pname = "tap-dancer-bash";
+          inherit version;
+          src = ./bash;
+          dontBuild = true;
+          installPhase = ''
+            mkdir -p $out/share/tap-dancer/lib/src
+            cp load.bash $out/share/tap-dancer/lib/
+            cp src/*.bash $out/share/tap-dancer/lib/src/
+            mkdir -p $out/nix-support
+            echo 'export TAP_DANCER_LIB="'"$out"'/share/tap-dancer/lib"' > $out/nix-support/setup-hook
+          '';
+        };
       in
       {
         packages = {
@@ -101,12 +116,14 @@
               tap-dancer-cli
               tap-dancer-rust
               tap-dancer-skill
+              tap-dancer-bash
             ];
           };
           cli = tap-dancer-cli;
           go = tap-dancer-go;
           rust = tap-dancer-rust;
           skill = tap-dancer-skill;
+          bash-lib = tap-dancer-bash;
         };
 
         devShells.default = pkgs.mkShell {
