@@ -30,7 +30,7 @@ deps:
     nix develop --command bash -c "cd go && go mod tidy && gomod2nix"
 
 test-validate:
-    @echo "TAP version 14" | nix run .#cli -- validate
+    nix develop --command bash -c 'echo -e "TAP version 14\n1..2\nok 1 - pass\nok 2 - pass" | go run ./go/cmd/tap-dancer validate'
 
 clean:
     rm -rf result
