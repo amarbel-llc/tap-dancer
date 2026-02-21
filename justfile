@@ -32,5 +32,8 @@ deps:
 test-validate:
     nix develop --command bash -c 'echo -e "TAP version 14\n1..2\nok 1 - pass\nok 2 - pass" | go run ./go/cmd/tap-dancer validate'
 
+test-go-test:
+    nix develop --command bash -c "cd go && go run ./cmd/tap-dancer go-test ./... | go run ./cmd/tap-dancer validate"
+
 clean:
     rm -rf result
