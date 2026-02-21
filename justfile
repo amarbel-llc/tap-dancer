@@ -1,7 +1,8 @@
-default:
-    @just --list
+default: build test
 
-build:
+build: build-nix build-cli
+
+build-nix:
     nix build
 
 build-cli:
