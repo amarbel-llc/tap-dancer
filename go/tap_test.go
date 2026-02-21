@@ -168,6 +168,25 @@ func TestComment(t *testing.T) {
 	}
 }
 
+func TestSubtestEmitsIndentedBlock(t *testing.T) {
+	var buf bytes.Buffer
+	tw := NewWriter(&buf)
+	sub := tw.Subtest("nested")
+	sub.Ok("inner pass")
+	sub.Plan()
+	tw.Ok("nested")
+
+	expected := "TAP version 14\n" +
+		"    # Subtest: nested\n" +
+		"    ok 1 - inner pass\n" +
+		"    1..1\n" +
+		"ok 1 - nested\n"
+
+	if buf.String() != expected {
+		t.Errorf("expected:\n%s\ngot:\n%s", expected, buf.String())
+	}
+}
+
 func TestSequentialNumbering(t *testing.T) {
 	var buf bytes.Buffer
 	tw := NewWriter(&buf)

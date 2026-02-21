@@ -8,8 +8,9 @@ import (
 )
 
 type Writer struct {
-	w io.Writer
-	n int
+	w     io.Writer
+	n     int
+	depth int
 }
 
 func NewWriter(w io.Writer) *Writer {
@@ -79,4 +80,30 @@ func (tw *Writer) BailOut(reason string) {
 
 func (tw *Writer) Comment(text string) {
 	fmt.Fprintf(tw.w, "# %s\n", text)
+}
+
+type indentWriter struct {
+	w      io.Writer
+	prefix string
+}
+
+func (iw *indentWriter) Write(p []byte) (int, error) {
+	lines := strings.Split(string(p), "\n")
+	for i, line := range lines {
+		if i == len(lines)-1 && line == "" {
+			break
+		}
+		out := iw.prefix + line + "\n"
+		if _, err := iw.w.Write([]byte(out)); err != nil {
+			return 0, err
+		}
+	}
+	return len(p), nil
+}
+
+func (tw *Writer) Subtest(name string) *Writer {
+	prefix := strings.Repeat("    ", tw.depth+1)
+	fmt.Fprintf(tw.w, "%s# Subtest: %s\n", prefix, name)
+	iw := &indentWriter{w: tw.w, prefix: prefix}
+	return &Writer{w: iw, depth: tw.depth + 1}
 }
