@@ -217,3 +217,107 @@ func TestSequentialNumbering(t *testing.T) {
 		t.Errorf("plan line: %q", lines[5])
 	}
 }
+
+func TestNestedSubtestTwoLevelsDeep(t *testing.T) {
+	var buf bytes.Buffer
+	tw := NewWriter(&buf)
+	outer := tw.Subtest("outer")
+	inner := outer.Subtest("inner")
+	inner.Ok("deep test")
+	inner.Plan()
+	outer.Ok("inner")
+	outer.Plan()
+	tw.Ok("outer")
+
+	expected := "TAP version 14\n" +
+		"    # Subtest: outer\n" +
+		"        # Subtest: inner\n" +
+		"        ok 1 - deep test\n" +
+		"        1..1\n" +
+		"    ok 1 - inner\n" +
+		"    1..1\n" +
+		"ok 1 - outer\n"
+
+	if buf.String() != expected {
+		t.Errorf("expected:\n%s\ngot:\n%s", expected, buf.String())
+	}
+}
+
+func TestSubtestNotOkWithDiagnostics(t *testing.T) {
+	var buf bytes.Buffer
+	tw := NewWriter(&buf)
+	sub := tw.Subtest("pkg")
+	sub.NotOk("failing", map[string]string{
+		"message": "broke",
+	})
+	sub.Plan()
+	tw.NotOk("pkg", nil)
+
+	out := buf.String()
+	if !strings.Contains(out, "    not ok 1 - failing\n") {
+		t.Errorf("expected indented not ok, got:\n%s", out)
+	}
+	if !strings.Contains(out, "      ---\n") {
+		t.Errorf("expected indented YAML start, got:\n%s", out)
+	}
+	if !strings.Contains(out, "      message: broke\n") {
+		t.Errorf("expected indented diagnostic, got:\n%s", out)
+	}
+	if !strings.Contains(out, "      ...\n") {
+		t.Errorf("expected indented YAML end, got:\n%s", out)
+	}
+}
+
+func TestSubtestBailOut(t *testing.T) {
+	var buf bytes.Buffer
+	tw := NewWriter(&buf)
+	sub := tw.Subtest("broken-pkg")
+	sub.BailOut("build failed")
+	tw.NotOk("broken-pkg", nil)
+
+	out := buf.String()
+	if !strings.Contains(out, "    Bail out! build failed\n") {
+		t.Errorf("expected indented bail out, got:\n%s", out)
+	}
+}
+
+func TestSubtestHasIndependentCounter(t *testing.T) {
+	var buf bytes.Buffer
+	tw := NewWriter(&buf)
+	sub1 := tw.Subtest("first")
+	sub1.Ok("a")
+	sub1.Ok("b")
+	sub1.Plan()
+	tw.Ok("first")
+
+	sub2 := tw.Subtest("second")
+	n := sub2.Ok("c")
+	sub2.Plan()
+	tw.Ok("second")
+
+	if n != 1 {
+		t.Errorf("expected sub2 counter to start at 1, got %d", n)
+	}
+}
+
+func TestSubtestOutputValidatesWithReader(t *testing.T) {
+	var buf bytes.Buffer
+	tw := NewWriter(&buf)
+
+	sub := tw.Subtest("mypackage")
+	sub.Ok("TestOne")
+	sub.NotOk("TestTwo", map[string]string{"message": "failed"})
+	sub.Plan()
+	tw.NotOk("mypackage", nil)
+	tw.Plan()
+
+	reader := NewReader(strings.NewReader(buf.String()))
+	summary := reader.Summary()
+	if !summary.Valid {
+		diags := reader.Diagnostics()
+		for _, d := range diags {
+			t.Errorf("diagnostic: line %d: %s: %s", d.Line, d.Severity, d.Message)
+		}
+		t.Fatalf("writer output did not validate as TAP-14:\n%s", buf.String())
+	}
+}

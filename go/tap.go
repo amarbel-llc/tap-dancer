@@ -102,7 +102,7 @@ func (iw *indentWriter) Write(p []byte) (int, error) {
 }
 
 func (tw *Writer) Subtest(name string) *Writer {
-	prefix := strings.Repeat("    ", tw.depth+1)
+	prefix := "    "
 	fmt.Fprintf(tw.w, "%s# Subtest: %s\n", prefix, name)
 	iw := &indentWriter{w: tw.w, prefix: prefix}
 	return &Writer{w: iw, depth: tw.depth + 1}
