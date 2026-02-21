@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"os/exec"
 	"os/signal"
 	"strings"
 
@@ -24,6 +25,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "  tap-dancer [command] [flags]\n\n")
 		fmt.Fprintf(os.Stderr, "Commands:\n")
 		fmt.Fprintf(os.Stderr, "  validate              Validate TAP-14 input\n")
+		fmt.Fprintf(os.Stderr, "  go-test [args...]    Run go test and convert output to TAP-14\n")
 		fmt.Fprintf(os.Stderr, "  generate-plugin DIR   Generate MCP plugin (for Nix postInstall)\n")
 		fmt.Fprintf(os.Stderr, "\nWhen run with no args and no TTY, starts MCP server mode\n")
 	}
@@ -88,7 +90,72 @@ func registerCommands() *command.App {
 		Run: handleValidate,
 	})
 
+	app.AddCommand(&command.Command{
+		Name:        "go-test",
+		Description: command.Description{Short: "Run go test and convert output to TAP-14"},
+		Params: []command.Param{
+			{Name: "verbose", Type: command.Bool, Description: "Pass -v to go test and include output for passing tests", Required: false},
+		},
+		RunCLI: handleGoTest,
+	})
+
 	return app
+}
+
+func handleGoTest(ctx context.Context, args json.RawMessage) error {
+	var params struct {
+		Verbose bool `json:"verbose"`
+	}
+	if err := json.Unmarshal(args, &params); err != nil {
+		return fmt.Errorf("invalid arguments: %w", err)
+	}
+
+	// Build go test command args: everything after "go-test" in os.Args
+	goTestArgs := []string{"test", "-json"}
+	if params.Verbose {
+		goTestArgs = append(goTestArgs, "-v")
+	}
+
+	// Find remaining args from os.Args after "go-test"
+	for i, arg := range os.Args {
+		if arg == "go-test" {
+			// Skip flags we handle (-v/--verbose) and collect the rest
+			rest := os.Args[i+1:]
+			for _, a := range rest {
+				if a == "-v" || a == "--verbose" {
+					continue
+				}
+				goTestArgs = append(goTestArgs, a)
+			}
+			break
+		}
+	}
+
+	cmd := exec.CommandContext(ctx, "go", goTestArgs...)
+	cmd.Stderr = os.Stderr
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("creating stdout pipe: %w", err)
+	}
+
+	if err := cmd.Start(); err != nil {
+		// Bail out if go test can't start
+		tw := tap.NewWriter(os.Stdout)
+		tw.BailOut(fmt.Sprintf("failed to start go test: %v", err))
+		return err
+	}
+
+	exitCode := tap.ConvertGoTest(stdout, os.Stdout, params.Verbose)
+
+	// Wait for command to finish (ignore error — we use our own exit code)
+	cmd.Wait()
+
+	if exitCode != 0 {
+		os.Exit(exitCode)
+	}
+
+	return nil
 }
 
 func handleValidate(ctx context.Context, args json.RawMessage, _ command.Prompter) (*command.Result, error) {
