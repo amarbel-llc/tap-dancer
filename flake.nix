@@ -2,12 +2,12 @@
   description = "TAP-14 writer libraries (Go + Rust) and purse-first skill plugin";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/23d72dabcb3b12469f57b37170fcbc1789bd7457";
-    nixpkgs-master.url = "github:NixOS/nixpkgs/b28c4999ed71543e71552ccfd0d7e68c581ba7e9";
+    nixpkgs.url = "github:NixOS/nixpkgs/6d41bc27aaf7b6a3ba6b169db3bd5d6159cfaa47";
+    nixpkgs-master.url = "github:NixOS/nixpkgs/5b7e21f22978c4b740b3907f3251b470f466a9a2";
     utils.url = "https://flakehub.com/f/numtide/flake-utils/0.1.102";
-    go.url = "github:friedenberg/eng?dir=devenvs/go";
-    rust.url = "github:friedenberg/eng?dir=devenvs/rust";
-    shell.url = "github:friedenberg/eng?dir=devenvs/shell";
+    go.url = "github:amarbel-llc/eng?dir=devenvs/go";
+    rust.url = "github:amarbel-llc/eng?dir=devenvs/rust";
+    shell.url = "github:amarbel-llc/eng?dir=devenvs/shell";
     crane.url = "github:ipetkov/crane";
     rust-overlay = {
       url = "github:oxalica/rust-overlay";
